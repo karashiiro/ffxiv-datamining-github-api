@@ -15,7 +15,9 @@ sr.getSheet("BNpcParts").then(console.log);
 sr.getSheetItem("TerritoryType", 202).then(console.log);
 sr.getSheetItem("TerritoryType", 203).then(console.log);
 
-sr.search("Weather", "heat waves").then(console.log);
+sr.search("Weather", {
+    searchTerm: "heat waves",
+}).then(console.log);
 
 sr.search("BGMFade", {
     columns: ["ID", "BGMFadeType.ID"],

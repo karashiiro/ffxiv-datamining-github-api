@@ -27,6 +27,32 @@ export function shove(obj, okProps) {
     return newObj;
 }
 
+export function compareWithStringOperator(lhs, strop, rhs) {
+    switch (strop) {
+        case "=":
+            if (lhs === rhs)
+                return true;
+            break;
+        case ">":
+            if (lhs > rhs)
+                return true;
+            break;
+        case ">=":
+            if (lhs >= rhs)
+                return true;
+            break;
+        case "<":
+            if (lhs < rhs)
+                return true;
+            break;
+        case "<=":
+            if (lhs <= rhs)
+                return true;
+            break;
+    }
+    return false;
+}
+
 /**
  * Parses a string such as array[0] into a tuple of the property name and index, e.g. ["array", 0].
  * @param {string} str

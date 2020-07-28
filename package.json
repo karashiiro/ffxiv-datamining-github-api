@@ -1,6 +1,6 @@
 {
   "name": "ffxiv-datamining-github-api",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "(WIP) An XIVAPI-like API for \"using the CSVs\" off of GitHub.",
   "main": "lib/ffxiv-datamining-github-api.js",
   "scripts": {
@@ -26,6 +26,7 @@
   "devDependencies": {
     "@babel/cli": "^7.10.5",
     "@babel/core": "^7.10.5",
-    "@babel/preset-env": "^7.10.4"
+    "@babel/preset-env": "^7.10.4",
+    "statman-stopwatch": "^2.11.1"
   }
 }

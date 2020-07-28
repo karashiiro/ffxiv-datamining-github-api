@@ -3,7 +3,14 @@ import parse from "csv-parse";
 import leven from "leven";
 import NodeCache from "node-cache";
 
-import { parseArrayString, parseFilters, parseValue, shove, validateSearchOptions } from "./util";
+import {
+    compareWithStringOperator,
+    parseArrayString,
+    parseFilters,
+    parseValue,
+    shove,
+    validateSearchOptions
+} from "./util";
 
 const CONTENT = require("../data/content.json");
 
@@ -48,7 +55,9 @@ export class FFXIVSheetResolver {
                 ? leven((row.Name || "").toLowerCase(), searchOptions.searchTerm) <= searchOptions.scoreThreshold
                 : true)
             .filter(row => executeFilters(row, parsedFilters))
-            .map(row => searchOptions.columns ? shove(row, searchOptions.columns) : row);
+            .map(row => searchOptions.columns
+                ? shove(row, searchOptions.columns)
+                : row);
 
         return {
             Pagination: {
@@ -68,19 +77,15 @@ export class FFXIVSheetResolver {
      * @param {string} sheetName The name of the sheet to get.
      * @param {number?} recurseDepth How deep to recurse sheet links.
      */
-    getSheet(sheetName, recurseDepth = 1) {
-        return new Promise(async resolve => {
-            const res = await this.getSheetRaw(sheetName);
+    async getSheet(sheetName, recurseDepth = 1) {
+        const [rows, headers, types] = await this.getSheetData(sheetName);
 
-            parseRawSheet(res, async (rows, headers, types) => {
-                for (let itemId = 0; itemId < rows.length; itemId++) {
-                    const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
-                    rows[itemId] = item;
-                }
-                
-                resolve(rows);
-            });
-        });
+        for (let itemId = 0; itemId < rows.length; itemId++) {
+            const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
+            rows[itemId] = item;
+        }
+
+        return rows;
     }
 
     /**
@@ -88,31 +93,38 @@ export class FFXIVSheetResolver {
      * @param {number} itemId The row ID to get data for.
      * @param {number?} recurseDepth How deep to recurse sheet links.
      */
-    getSheetItem(sheetName, itemId, recurseDepth = 1) {
-        return new Promise(async resolve => {
-            const res = await this.getSheetRaw(sheetName);
+    async getSheetItem(sheetName, itemId, recurseDepth = 1) {
+        const [rows, headers, types] = await this.getSheetData(sheetName);
 
-            parseRawSheet(res, async (rows, headers, types) => {
-                // Make a new object with the keys of headers, and the values of the argument row
-                const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
-                
-                resolve(item);
-            });
-        });
+        // Make a new object with the keys of headers, and the values of the argument row
+        const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
+        
+        return item;
     }
 
-    async getSheetRaw(sheetName) {
-        let res;
+    async getSheetData(sheetName) {
         const cached = this.cache.get(sheetName);
         if (cached) {
-            res = cached;
+            return cached;
         } else {
-            res = await this.csvHost(sheetName + ".csv");
-            this.cache.set(sheetName, res);
+            const res = await this.csvHost(sheetName + ".csv");
+            return new Promise(resolve => {
+                parseRawSheet(res, (rows, headers, types) => {
+                    const data = [rows, headers, types];
+                    this.cache.set(sheetName, data);
+                    resolve(data);
+                });
+            });
         }
-        return res;
     }
 
+    /**
+     * Builds a sheet item from a single table row.
+     * @param {string[]} row The values of each column.
+     * @param {string[]} headers The column headers.
+     * @param {string[]} types The types of each column.
+     * @param {number} recurseDepth The number of times to recurse sheet-linking.
+     */
     async buildSheetItem(row, headers, types, recurseDepth) {
         if (row == null)
             return null;
@@ -140,7 +152,7 @@ export class FFXIVSheetResolver {
                 retObj[arrayName][arrayIndex] = parseValue(row[h]);
             }
 
-            if (recurseDepth !== 0 && CONTENT.includes(types[h])) {
+            if (recurseDepth !== 0 && CONTENT.indexOf(types[h]) !== -1) {
                 const sheetIndex = retObj[headers[h]];
                 retObj[headers[h]] = (await this.getSheetItem(types[h], sheetIndex, recurseDepth - 1));
             }
@@ -168,7 +180,7 @@ function parseRawSheet(rawData, callbackFn) {
         const headers = rows.shift();
         const types = rows.shift();
 
-        callbackFn(rows, headers, types)
+        callbackFn(rows, headers, types);
     });
 
     parser.end(rawData);
@@ -186,29 +198,11 @@ function executeFilters(row, parsedFilters) {
             value = value[fnc];
         }
 
-        // Actual checks
-        switch (filter.operator) {
-            case "=":
-                if (value === filter.value)
-                    continue;
-                break;
-            case ">":
-                if (value > filter.value)
-                    continue;
-                break;
-            case ">=":
-                if (value >= filter.value)
-                    continue;
-                break;
-            case "<":
-                if (value < filter.value)
-                    continue;
-                break;
-            case "<=":
-                if (value <= filter.value)
-                    continue;
-                break;
+        const result = compareWithStringOperator(value, filter.operator, filter.value);
+        if (result) {
+            continue;
         }
+
         return false;
     }
     return true;
