@@ -6,7 +6,7 @@
 
 ## Usage
 ```js
-import { FFXIVSheetResolver } from "./ffxiv-datamining-github-api"
+import { FFXIVSheetResolver } from "./ffxiv-datamining-github-api";
 
 const sr = new FFXIVSheetResolver();
 
@@ -18,4 +18,6 @@ sr.getSheetItem("TerritoryType", 203).then(console.log);
 sr.search("Weather", "heat waves").then(console.log);
 
 sr.search("BGMFade", undefined, undefined, ["ID", "BGMFadeType.ID"]).then(console.log);
+
+sr.search("BGMFade", undefined, undefined, undefined, ["BGMFadeType.ID>=2"]).then(console.log);
 ```

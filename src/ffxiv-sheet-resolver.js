@@ -26,17 +26,21 @@ export class FFXIVSheetResolver {
      * @param {string?} searchTerm The term to search for.
      * @param {number?} scoreThreshold The search term matching sensitivity.
      * @param {string[]?} columns The sheet columns to return.
+     * @param {string[]?} filters The filters to apply to the search results.
      */
-    async search(sheetName, searchTerm, scoreThreshold = 1, columns = null) {
+    async search(sheetName, searchTerm, scoreThreshold = 1, columns = null, filters = null) {
         if (searchTerm)
             searchTerm = searchTerm.toLowerCase();
+
+        const parsedFilters = filters ? parseFilters(filters) : null;
+
         const sheet = (await this.getSheet(sheetName))
             .filter(row => row != null && searchTerm
                 ? leven((row.Name || "").toLowerCase(), searchTerm) <= scoreThreshold
                 : true)
-            .map(row => {
-                return columns ? shove(row, columns) : row;
-            });
+            .filter(row => executeFilters(row, parsedFilters))
+            .map(row => columns ? shove(row, columns) : row);
+
         return {
             Pagination: {
                 Page: 1,
@@ -148,6 +152,71 @@ export class FFXIVSheetResolver {
         }
         return retObj;
     }
+}
+
+function executeFilters(row, parsedFilters) {
+    for (const filter of parsedFilters) {
+        // Loop down to whatever property is actually being checked for
+        let value = row;
+        const fieldNameComponents = filter.fieldName.split(".");
+        for (const fnc of fieldNameComponents) {
+            value = value[fnc];
+        }
+
+        // Actual checks
+        switch (filter.operator) {
+            case "=":
+                if (value === filter.value)
+                    continue;
+                break;
+            case ">":
+                if (value > filter.value)
+                    continue;
+                break;
+            case ">=":
+                if (value >= filter.value)
+                    continue;
+                break;
+            case "<":
+                if (value < filter.value)
+                    continue;
+                break;
+            case "<=":
+                if (value <= filter.value)
+                    continue;
+                break;
+        }
+        return false;
+    }
+    return true;
+}
+
+function parseFilters(filters) {
+    const parsedFilters = [];
+    for (const filter of filters) {
+        const lessThanIndex = filter.indexOf("<");
+        const equalsIndex = filter.indexOf("=");
+        const moreThanIndex = filter.indexOf(">");
+        
+        const operatorIndices = [];
+        if (lessThanIndex !== -1) operatorIndices.push(lessThanIndex);
+        if (equalsIndex !== -1) operatorIndices.push(equalsIndex);
+        if (moreThanIndex !== -1) operatorIndices.push(moreThanIndex);
+        
+        const operatorStartIndex = Math.min(...operatorIndices);
+        const operatorEndIndex = Math.max(...operatorIndices);
+
+        const fieldName = filter.substring(0, operatorStartIndex);
+        const operator = filter.substring(operatorStartIndex, operatorEndIndex + 1);
+        const value = parseValue(filter.substring(operatorEndIndex + 1));
+        
+        parsedFilters.push({
+            fieldName,
+            operator,
+            value,
+        });
+    }
+    return parsedFilters;
 }
 
 // Returns a new object with the properties of obj limited to those listed in okProps
