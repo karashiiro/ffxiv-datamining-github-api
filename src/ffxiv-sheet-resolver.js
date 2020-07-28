@@ -4,7 +4,7 @@ import NodeCache from "node-cache";
 
 const CONTENT = require("../data/content.json");
 
-export class SheetResolver {
+export class FFXIVSheetResolver {
     /**
      * @param {string?} repoId The ID of the datamining repo to access, e.g. "xivapi/ffxiv-datamining".
      * @param {string?} branch The branch of the repo to access.
@@ -16,6 +16,7 @@ export class SheetResolver {
             stdTTL: ttl,
             checkperiod: ttl === 0 ? 0 : 600,
         });
+        this.resultsPerPage = 100;
     }
 
     /**
