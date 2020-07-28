@@ -1,0 +1,30 @@
+{
+  "name": "ffxiv-datamining-github-api",
+  "version": "0.0.1",
+  "description": "(WIP) An XIVAPI-like API for \"using the CSVs\" off of GitHub.",
+  "main": "lib/ffxiv-datamining-github-api.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node .",
+    "build": "npx babel src --out-dir lib",
+    "build-and-run": "npm run build && npm start"
+  },
+  "files": [
+    "data/**/*.json",
+    "lib/**/*.js"
+  ],
+  "author": "karashiiro",
+  "license": "MIT",
+  "dependencies": {
+    "@babel/polyfill": "^7.10.4",
+    "bent": "^7.3.7",
+    "csv-parse": "^4.11.1",
+    "node-cache": "^5.1.2",
+    "regenerator-runtime": "^0.13.7"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.10.5",
+    "@babel/core": "^7.10.5",
+    "@babel/preset-env": "^7.10.4"
+  }
+}
