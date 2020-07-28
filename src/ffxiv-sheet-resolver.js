@@ -3,13 +3,15 @@ import parse from "csv-parse";
 import leven from "leven";
 import NodeCache from "node-cache";
 
+import { parseArrayString, parseFilters, parseValue, shove, validateSearchOptions } from "./util";
+
 const CONTENT = require("../data/content.json");
 
 export class FFXIVSheetResolver {
     /**
      * @param {string?} repoId The ID of the datamining repo to access, e.g. "xivapi/ffxiv-datamining".
      * @param {string?} branch The branch of the repo to access.
-     * @param {number?} ttl The time-to-live of downloaded sheets. Setting this to 0 disables expiry.
+     * @param {number?} ttl The time-to-live of downloaded sheets, in seconds. Setting this to 0 disables expiry.
      */
     constructor(repoId = "xivapi/ffxiv-datamining", branch = "master", ttl = 600) {
         this.csvHost = bent(`https://raw.githubusercontent.com/${repoId}/${branch}/csv/`, "string", "GET", 200);
@@ -26,6 +28,7 @@ export class FFXIVSheetResolver {
      * @property {number?} scoreThreshold The search term matching sensitivity.
      * @property {string[]?} columns The sheet columns to return.
      * @property {string[]?} filters The filters to apply to the search results.
+     * @property {number?} recurseDepth The sheet-linking recursion depth.
      */
 
     /**
@@ -40,7 +43,7 @@ export class FFXIVSheetResolver {
             ? parseFilters(searchOptions.filters)
             : null;
 
-        const sheet = (await this.getSheet(sheetName))
+        const sheet = (await this.getSheet(sheetName, searchOptions.recurseDepth))
             .filter(row => row != null && searchOptions.searchTerm
                 ? leven((row.Name || "").toLowerCase(), searchOptions.searchTerm) <= searchOptions.scoreThreshold
                 : true)
@@ -146,6 +149,31 @@ export class FFXIVSheetResolver {
     }
 }
 
+function parseRawSheet(rawData, callbackFn) {
+    let rows = [];
+
+    const parser = parse();
+
+    parser.on("readable", () => {
+        let record;
+        while (record = parser.read()) {
+            rows.push(record);
+        }
+    })
+    .on("error", console.error)
+    .on("end", () => {
+        rows = rows.slice(1); // Trash "key,0,1,etc." row
+        rows[0][0] = "ID"; // Used to be "#", XIVAPI uses "ID"
+
+        const headers = rows.shift();
+        const types = rows.shift();
+
+        callbackFn(rows, headers, types)
+    });
+
+    parser.end(rawData);
+}
+
 function executeFilters(row, parsedFilters) {
     if (parsedFilters == null)
         return true;
@@ -184,120 +212,4 @@ function executeFilters(row, parsedFilters) {
         return false;
     }
     return true;
-}
-
-function parseFilters(filters) {
-    const parsedFilters = [];
-    for (const filter of filters) {
-        const lessThanIndex = filter.indexOf("<");
-        const equalsIndex = filter.indexOf("=");
-        const moreThanIndex = filter.indexOf(">");
-        
-        const operatorIndices = [];
-        if (lessThanIndex !== -1) operatorIndices.push(lessThanIndex);
-        if (equalsIndex !== -1) operatorIndices.push(equalsIndex);
-        if (moreThanIndex !== -1) operatorIndices.push(moreThanIndex);
-        
-        const operatorStartIndex = Math.min(...operatorIndices);
-        const operatorEndIndex = Math.max(...operatorIndices);
-
-        const fieldName = filter.substring(0, operatorStartIndex);
-        const operator = filter.substring(operatorStartIndex, operatorEndIndex + 1);
-        const value = parseValue(filter.substring(operatorEndIndex + 1));
-        
-        parsedFilters.push({
-            fieldName,
-            operator,
-            value,
-        });
-    }
-    return parsedFilters;
-}
-
-function validateSearchOptions(searchOptions) {
-    if (!searchOptions)
-        searchOptions = {};
-        
-    if (!searchOptions.scoreThreshold)
-        searchOptions.scoreThreshold = 1;
-
-    if (searchOptions.searchTerm)
-        searchOptions.searchTerm = searchOptions.searchTerm.toLowerCase();
-    
-    return searchOptions;
-}
-
-// Returns a new object with the properties of obj limited to those listed in okProps
-function shove(obj, okProps) {
-    const newObj = {};
-    for (const prop of okProps) {
-        const subProps = prop.split(".");
-
-        // Don't filter if no specific subproperties are specified,
-        // just stick on the entire object.
-        if (subProps.length === 1) {
-            newObj[prop] = obj[prop];
-            continue;
-        }
-        
-        let noRef = newObj;
-        let ooRef = obj;
-        for (let i = 0; i < subProps.length - 1; i++) {
-            noRef[subProps[i]] = {};
-            noRef = noRef[subProps[i]];
-            ooRef = ooRef[subProps[i]];
-        }
-        noRef[subProps[subProps.length - 1]] = ooRef[subProps[subProps.length - 1]]
-    }
-    return newObj;
-}
-
-function parseRawSheet(rawData, callbackFn) {
-    let rows = [];
-
-    const parser = parse();
-
-    parser.on("readable", () => {
-        let record;
-        while (record = parser.read()) {
-            rows.push(record);
-        }
-    })
-    .on("error", console.error)
-    .on("end", () => {
-        rows = rows.slice(1); // Trash "key,0,1,etc." row
-        rows[0][0] = "ID"; // Used to be "#", XIVAPI uses "ID"
-
-        const headers = rows.shift();
-        const types = rows.shift();
-
-        callbackFn(rows, headers, types)
-    });
-
-    parser.end(rawData);
-}
-
-function parseArrayString(str) {
-    let arrayName = null;
-    let arrayIndex = null;
-    if (str.indexOf("[") !== -1) {
-        arrayName = str.substring(0, str.indexOf("["))
-        arrayIndex = parseInt(str.substring(str.indexOf("[") + 1, str.indexOf("]")));
-    }
-    return [arrayName, arrayIndex];
-}
-
-function parseValue(value) {
-    const tryFloat = parseFloat(value);
-    if (!isNaN(tryFloat)) {
-        return tryFloat;
-    } else if (value == "True") {
-        return true;
-    } else if (value == "False") {
-        return false;
-    } else if (value === "") {
-        return null;
-    } else {
-        return value;
-    }
 }
