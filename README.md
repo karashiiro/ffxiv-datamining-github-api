@@ -17,7 +17,11 @@ sr.getSheetItem("TerritoryType", 203).then(console.log);
 
 sr.search("Weather", "heat waves").then(console.log);
 
-sr.search("BGMFade", undefined, undefined, ["ID", "BGMFadeType.ID"]).then(console.log);
+sr.search("BGMFade", {
+    columns: ["ID", "BGMFadeType.ID"],
+}).then(console.log);
 
-sr.search("BGMFade", undefined, undefined, undefined, ["BGMFadeType.ID>=2"]).then(console.log);
+sr.search("BGMFade", {
+    filters: ["BGMFadeType.ID>=2"],
+}).then(console.log);
 ```

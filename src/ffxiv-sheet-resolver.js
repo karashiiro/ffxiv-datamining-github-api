@@ -21,25 +21,31 @@ export class FFXIVSheetResolver {
     }
 
     /**
+     * @typedef {Object} SearchOptions
+     * @property {string?} searchTerm The term to search for.
+     * @property {number?} scoreThreshold The search term matching sensitivity.
+     * @property {string[]?} columns The sheet columns to return.
+     * @property {string[]?} filters The filters to apply to the search results.
+     */
+
+    /**
      * Searches a single sheet for a search term.
      * @param {string} sheetName The name of the sheet to get.
-     * @param {string?} searchTerm The term to search for.
-     * @param {number?} scoreThreshold The search term matching sensitivity.
-     * @param {string[]?} columns The sheet columns to return.
-     * @param {string[]?} filters The filters to apply to the search results.
+     * @param {SearchOptions} searchOptions
      */
-    async search(sheetName, searchTerm, scoreThreshold = 1, columns = null, filters = null) {
-        if (searchTerm)
-            searchTerm = searchTerm.toLowerCase();
+    async search(sheetName, searchOptions) {
+        searchOptions = validateSearchOptions(searchOptions);
 
-        const parsedFilters = filters ? parseFilters(filters) : null;
+        const parsedFilters = searchOptions.filters
+            ? parseFilters(searchOptions.filters)
+            : null;
 
         const sheet = (await this.getSheet(sheetName))
-            .filter(row => row != null && searchTerm
-                ? leven((row.Name || "").toLowerCase(), searchTerm) <= scoreThreshold
+            .filter(row => row != null && searchOptions.searchTerm
+                ? leven((row.Name || "").toLowerCase(), searchOptions.searchTerm) <= searchOptions.scoreThreshold
                 : true)
             .filter(row => executeFilters(row, parsedFilters))
-            .map(row => columns ? shove(row, columns) : row);
+            .map(row => searchOptions.columns ? shove(row, searchOptions.columns) : row);
 
         return {
             Pagination: {
@@ -63,16 +69,8 @@ export class FFXIVSheetResolver {
         return new Promise(async resolve => {
             const res = await this.getSheetRaw(sheetName);
 
-            let rows = [];
-            parseRawSheet(rows, res, async () => {
-                rows = rows.slice(1); // Trash "key,0,1,etc." row
-                rows[0][0] = "ID"; // Used to be "#", XIVAPI uses "ID"
-
-                const headers = rows.shift();
-                const types = rows.shift();
-                
+            parseRawSheet(res, async (rows, headers, types) => {
                 for (let itemId = 0; itemId < rows.length; itemId++) {
-                    // Make a new object with the keys of headers, and the values of the argument row
                     const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
                     rows[itemId] = item;
                 }
@@ -91,14 +89,8 @@ export class FFXIVSheetResolver {
         return new Promise(async resolve => {
             const res = await this.getSheetRaw(sheetName);
 
-            let rows = [];
-            parseRawSheet(rows, res, async () => {
-                rows = rows.slice(1); // Trash "key,0,1,etc." row
-                rows[0][0] = "ID"; // Used to be "#", XIVAPI uses "ID"
-    
-                const headers = rows.shift();
-                const types = rows.shift();
-                
+            parseRawSheet(res, async (rows, headers, types) => {
+                // Make a new object with the keys of headers, and the values of the argument row
                 const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
                 
                 resolve(item);
@@ -155,6 +147,9 @@ export class FFXIVSheetResolver {
 }
 
 function executeFilters(row, parsedFilters) {
+    if (parsedFilters == null)
+        return true;
+
     for (const filter of parsedFilters) {
         // Loop down to whatever property is actually being checked for
         let value = row;
@@ -219,6 +214,19 @@ function parseFilters(filters) {
     return parsedFilters;
 }
 
+function validateSearchOptions(searchOptions) {
+    if (!searchOptions)
+        searchOptions = {};
+        
+    if (!searchOptions.scoreThreshold)
+        searchOptions.scoreThreshold = 1;
+
+    if (searchOptions.searchTerm)
+        searchOptions.searchTerm = searchOptions.searchTerm.toLowerCase();
+    
+    return searchOptions;
+}
+
 // Returns a new object with the properties of obj limited to those listed in okProps
 function shove(obj, okProps) {
     const newObj = {};
@@ -244,7 +252,9 @@ function shove(obj, okProps) {
     return newObj;
 }
 
-function parseRawSheet(rows, rawData, callback) {
+function parseRawSheet(rawData, callbackFn) {
+    let rows = [];
+
     const parser = parse();
 
     parser.on("readable", () => {
@@ -254,7 +264,15 @@ function parseRawSheet(rows, rawData, callback) {
         }
     })
     .on("error", console.error)
-    .on("end", callback);
+    .on("end", () => {
+        rows = rows.slice(1); // Trash "key,0,1,etc." row
+        rows[0][0] = "ID"; // Used to be "#", XIVAPI uses "ID"
+
+        const headers = rows.shift();
+        const types = rows.shift();
+
+        callbackFn(rows, headers, types)
+    });
 
     parser.end(rawData);
 }
