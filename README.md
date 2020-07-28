@@ -16,4 +16,6 @@ sr.getSheetItem("TerritoryType", 202).then(console.log);
 sr.getSheetItem("TerritoryType", 203).then(console.log);
 
 sr.search("Weather", "heat waves").then(console.log);
+
+sr.search("BGMFade", undefined, undefined, ["ID", "BGMFadeType.ID"]).then(console.log);
 ```

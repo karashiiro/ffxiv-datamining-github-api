@@ -28,7 +28,8 @@ export class FFXIVSheetResolver {
      * @param {string[]?} columns The sheet columns to return.
      */
     async search(sheetName, searchTerm, scoreThreshold = 1, columns = null) {
-        searchTerm = searchTerm.toLowerCase();
+        if (searchTerm)
+            searchTerm = searchTerm.toLowerCase();
         const sheet = (await this.getSheet(sheetName))
             .filter(row => row != null && searchTerm
                 ? leven((row.Name || "").toLowerCase(), searchTerm) <= scoreThreshold
@@ -153,15 +154,23 @@ export class FFXIVSheetResolver {
 function shove(obj, okProps) {
     const newObj = {};
     for (const prop of okProps) {
-        newObj[prop] = obj[prop];
         const subProps = prop.split(".");
-        let noRef = newObj[prop];
-        let ooRef = obj[prop];
-        for (const sProp of subProps) {
-            noRef[sProp] = ooRef[sProp];
-            noRef = noRef[sProp];
-            ooRef = ooRef[sProp];
+
+        // Don't filter if no specific subproperties are specified,
+        // just stick on the entire object.
+        if (subProps.length === 1) {
+            newObj[prop] = obj[prop];
+            continue;
         }
+        
+        let noRef = newObj;
+        let ooRef = obj;
+        for (let i = 0; i < subProps.length - 1; i++) {
+            noRef[subProps[i]] = {};
+            noRef = noRef[subProps[i]];
+            ooRef = ooRef[subProps[i]];
+        }
+        noRef[subProps[subProps.length - 1]] = ooRef[subProps[subProps.length - 1]]
     }
     return newObj;
 }

@@ -1,6 +1,6 @@
 {
   "name": "ffxiv-datamining-github-api",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "description": "(WIP) An XIVAPI-like API for \"using the CSVs\" off of GitHub.",
   "main": "lib/ffxiv-datamining-github-api.js",
   "scripts": {
