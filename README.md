@@ -1,5 +1,5 @@
 # ffxiv-datamining-github-api
-(WIP) An XIVAPI-like API for "using the CSVs" off of GitHub. Currently (foreseeably?) very slow, and thus lacks a comprehensive search function.
+An XIVAPI-like API for "using the CSVs" off of GitHub. Currently (foreseeably?) very slow, and thus lacks a comprehensive search function.
 
 ## Installation
 `npm i -S ffxiv-datamining-github-api`
