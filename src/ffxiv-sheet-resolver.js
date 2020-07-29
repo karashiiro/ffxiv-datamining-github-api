@@ -79,7 +79,7 @@ export class FFXIVSheetResolver {
      */
     async getSheet(sheetName, recurseDepth = 1) {
         const [rows, headers, types] = await this.getSheetData(sheetName);
-
+        
         for (let itemId = 0; itemId < rows.length; itemId++) {
             const item = await this.buildSheetItem(
                 rows[itemId],

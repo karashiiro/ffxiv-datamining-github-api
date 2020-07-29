@@ -1,4 +1,4 @@
-import mem from "mem";
+import memoize from "fast-memoize";
 
 /**
  * Returns a new object with the properties of obj limited to those listed in okProps.
@@ -59,7 +59,7 @@ export function compareWithStringOperator(lhs, strop, rhs) {
  * Parses a string such as array[0] into a tuple of the property name and index, e.g. ["array", 0].
  * @param {string} str
  */
-export const parseArrayString = mem(_parseArrayString);
+export const parseArrayString = memoize(_parseArrayString);
 
 function _parseArrayString(str) {
     let arrayName = null;
@@ -107,7 +107,7 @@ export function parseFilters(filters) {
  * Parses a string value into its nearest-representable integral type.
  * @param {string} value
  */
-export const parseValue = mem(_parseValue);
+export const parseValue = memoize(_parseValue);
 
 function _parseValue(value) {
     const tryFloat = parseFloat(value);
