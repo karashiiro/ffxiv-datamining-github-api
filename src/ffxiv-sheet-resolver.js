@@ -2,7 +2,6 @@ import bent from "bent";
 import parse from "csv-parse";
 import leven from "leven";
 import NodeCache from "node-cache";
-import Parallel from "paralleljs";
 
 import {
     compareWithStringOperator,
