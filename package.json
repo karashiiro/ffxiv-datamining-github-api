@@ -21,12 +21,12 @@
     "csv-parse": "^4.11.1",
     "leven": "^3.1.0",
     "node-cache": "^5.1.2",
+    "paralleljs": "^1.0.1",
     "regenerator-runtime": "^0.13.7"
   },
   "devDependencies": {
     "@babel/cli": "^7.10.5",
     "@babel/core": "^7.10.5",
-    "@babel/preset-env": "^7.10.4",
-    "statman-stopwatch": "^2.11.1"
+    "@babel/preset-env": "^7.10.4"
   }
 }

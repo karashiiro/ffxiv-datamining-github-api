@@ -2,6 +2,7 @@ import bent from "bent";
 import parse from "csv-parse";
 import leven from "leven";
 import NodeCache from "node-cache";
+import Parallel from "paralleljs";
 
 import {
     compareWithStringOperator,
@@ -81,7 +82,11 @@ export class FFXIVSheetResolver {
         const [rows, headers, types] = await this.getSheetData(sheetName);
 
         for (let itemId = 0; itemId < rows.length; itemId++) {
-            const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
+            const item = await this.buildSheetItem(
+                rows[itemId],
+                headers,
+                types,
+                recurseDepth);
             rows[itemId] = item;
         }
 
@@ -97,7 +102,11 @@ export class FFXIVSheetResolver {
         const [rows, headers, types] = await this.getSheetData(sheetName);
 
         // Make a new object with the keys of headers, and the values of the argument row
-        const item = await this.buildSheetItem(rows[itemId], headers, types, recurseDepth);
+        const item = await this.buildSheetItem(
+            rows[itemId],
+            headers,
+            types,
+            recurseDepth);
         
         return item;
     }
@@ -131,32 +140,27 @@ export class FFXIVSheetResolver {
 
         const retObj = {};
         for (let h = 0; h < headers.length; h++) {
-            // Parse keys
-            if (headers[h].indexOf("{") !== -1) {
-                headers[h] = headers[h].replace(/[{}]/g, "");
-            } else if (headers[h] === "") {
-                continue;
-            }
+            const headerCell = headers[h];
+            const dataCell = row[h];
+            const type = types[h];
 
-            const [arrayName, arrayIndex] = parseArrayString(headers[h]);
-
-            // Parse values
-            if (arrayName == null || arrayIndex == null) {
-                retObj[headers[h]] = parseValue(row[h]);
+            const [arrayName, arrayIndex] = parseArrayString(headerCell);
+            
+            if (arrayName == null) {
+                retObj[headerCell] = parseValue(dataCell);
             } else {
-                // Array parsing
                 if (!retObj[arrayName]) {
                     retObj[arrayName] = [];
                 }
-
-                retObj[arrayName][arrayIndex] = parseValue(row[h]);
+                retObj[arrayName][arrayIndex] = parseValue(dataCell);
             }
-
-            if (recurseDepth !== 0 && CONTENT.indexOf(types[h]) !== -1) {
-                const sheetIndex = retObj[headers[h]];
-                retObj[headers[h]] = (await this.getSheetItem(types[h], sheetIndex, recurseDepth - 1));
+            
+            if (recurseDepth !== 0 && CONTENT.indexOf(type) !== -1) {
+                const sheetIndex = retObj[headerCell];
+                retObj[headerCell] = (await this.getSheetItem(type, sheetIndex, recurseDepth - 1));
             }
         }
+        
         return retObj;
     }
 }
@@ -179,6 +183,10 @@ function parseRawSheet(rawData, callbackFn) {
 
         const headers = rows.shift();
         const types = rows.shift();
+
+        for (let i = 0; i < headers.length; i++) {
+            headers[i] = headers[i].replace(/[{}]/g, "");
+        }
 
         callbackFn(rows, headers, types);
     });
