@@ -99,7 +99,7 @@ export class FFXIVSheetResolver {
      */
     async getSheetItem(sheetName, itemId, recurseDepth = 1) {
         const [rows, headers, types] = await this.getSheetData(sheetName);
-
+        
         // Make a new object with the keys of headers, and the values of the argument row
         const item = await this.buildSheetItem(
             rows[itemId],
@@ -112,6 +112,7 @@ export class FFXIVSheetResolver {
 
     async getSheetData(sheetName) {
         const cached = this.cache.get(sheetName);
+
         if (cached) {
             return cached;
         } else {

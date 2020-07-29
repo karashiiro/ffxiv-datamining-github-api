@@ -1,3 +1,5 @@
+import mem from "mem";
+
 /**
  * Returns a new object with the properties of obj limited to those listed in okProps.
  * @param {Object} obj The object to shove in.
@@ -57,7 +59,9 @@ export function compareWithStringOperator(lhs, strop, rhs) {
  * Parses a string such as array[0] into a tuple of the property name and index, e.g. ["array", 0].
  * @param {string} str
  */
-export function parseArrayString(str) {
+export const parseArrayString = mem(_parseArrayString);
+
+function _parseArrayString(str) {
     let arrayName = null;
     let arrayIndex = null;
     if (str.indexOf("[") !== -1) {
@@ -103,7 +107,9 @@ export function parseFilters(filters) {
  * Parses a string value into its nearest-representable integral type.
  * @param {string} value
  */
-export function parseValue(value) {
+export const parseValue = mem(_parseValue);
+
+function _parseValue(value) {
     const tryFloat = parseFloat(value);
     if (!isNaN(tryFloat)) {
         return tryFloat;
