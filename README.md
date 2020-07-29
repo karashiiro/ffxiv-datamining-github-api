@@ -1,5 +1,5 @@
 # ffxiv-datamining-github-api
-An XIVAPI-like API for "using the CSVs" off of GitHub. Currently (foreseeably?) very slow when performing recursively-linked sheet fetches, and thus lacks a comprehensive search function.
+An XIVAPI-like API for "using the CSVs" off of GitHub.
 
 ## Installation
 `npm i -S ffxiv-datamining-github-api`
@@ -37,5 +37,11 @@ sr.searchSheet("BGMFade", {
 
 sr.searchSheet("BGMFade", {
     filters: ["BGMFadeType.ID>=2"],
+}).then(console.log);
+
+sr.search({
+    searchTerm: "eulmore",
+    indexes: ["PlaceName"],
+    recurseDepth: 0,
 }).then(console.log);
 ```

@@ -33,10 +33,59 @@ export class FFXIVSheetResolver {
      * @typedef {Object} SearchOptions
      * @property {string?} searchTerm The term to search for.
      * @property {number?} scoreThreshold The search term matching sensitivity.
+     * @property {string[]?} indexes The case-sensitive indexes (Item, BGM, etc.) to search.
      * @property {string[]?} columns The sheet columns to return.
      * @property {string[]?} filters The filters to apply to the search results.
+     * @property {string?} sortField The field to sort the results on.
+     * @property {("asc"|"desc")} sortOrder The order to sort the results in.
      * @property {number?} recurseDepth The sheet-linking recursion depth.
      */
+
+    /**
+     * Searches all sheets according to the specified options.
+     * @param {SearchOptions} searchOptions
+     */
+    async search(searchOptions) {
+        searchOptions = validateSearchOptions(searchOptions);
+        
+        let results = [];
+
+        for (const contentType of CONTENT) {
+            if (searchOptions.indexes && searchOptions.indexes.indexOf(contentType) === -1)
+                continue;
+            
+            const ctRes = await this.searchSheet(contentType, searchOptions);
+            if (ctRes.Results) results.push(...ctRes.Results.map(row => {
+                row._ContentType = contentType;
+                return row;
+            }));
+        }
+
+        results = results.sort((a, b) => {
+            if (!searchOptions.sortField) {
+                return 0;
+            }
+
+            if (searchOptions.sortOrder === "asc") {
+                return a[searchOptions.sortField] - b[searchOptions.sortField];
+            } else {
+                return b[searchOptions.sortField] - a[searchOptions.sortField];
+            }
+        });
+        
+        return {
+            Pagination: {
+                Page: 1,
+                PageNext: 1,
+                PagePrev: 1,
+                PageTotal: 1,
+                Results: results.length,
+                ResultsPerPage: results.length,
+                ResultsTotal: results.length,
+            },
+            Results: results,
+        };
+    }
 
     /**
      * Searches a single sheet for a search term.
@@ -52,12 +101,28 @@ export class FFXIVSheetResolver {
 
         const sheet = (await this.getSheet(sheetName, searchOptions.recurseDepth))
             .filter(row => row != null && searchOptions.searchTerm
-                ? leven((row.Name || "").toLowerCase(), searchOptions.searchTerm) <= searchOptions.scoreThreshold
+                ? leven(("" + row.Name || "").toLowerCase(), searchOptions.searchTerm) <= searchOptions.scoreThreshold
                 : true)
             .filter(row => executeFilters(row, parsedFilters))
             .map(row => searchOptions.columns
                 ? shove(row, searchOptions.columns)
-                : row);
+                : row)
+            .map(row => {
+                if (searchOptions.searchTerm)
+                    row._Score = leven(("" + row.Name || "").toLowerCase(), searchOptions.searchTerm);
+                return row;
+            })
+            .sort((a, b) => {
+                if (!searchOptions.sortField) {
+                    return 0;
+                }
+
+                if (searchOptions.sortOrder === "asc") {
+                    return a[searchOptions.sortField] - b[searchOptions.sortField];
+                } else {
+                    return b[searchOptions.sortField] - a[searchOptions.sortField];
+                }
+            });
 
         return {
             Pagination: {
@@ -146,13 +211,21 @@ export class FFXIVSheetResolver {
 
             const [arrayName, arrayIndex] = parseArrayString(headerCell);
             
-            if (arrayName == null) {
+            if (arrayName == null || isNaN(arrayIndex)) {
                 retObj[headerCell] = parseValue(dataCell);
             } else {
                 if (!retObj[arrayName]) {
                     retObj[arrayName] = [];
                 }
-                retObj[arrayName][arrayIndex] = parseValue(dataCell);
+                try {
+                    retObj[arrayName][arrayIndex] = parseValue(dataCell);
+                } catch (err) {
+                    // For errors like the following, ignoring this seems fine.
+                    // TypeError: Cannot create property '0' on number '1141124'
+                    if (err instanceof TypeError)
+                        continue;
+                    throw err;
+                }
             }
             
             if (recurseDepth !== 0 && CONTENT.indexOf(type) !== -1) {

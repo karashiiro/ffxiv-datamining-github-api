@@ -132,11 +132,12 @@ export function validateSearchOptions(searchOptions) {
     if (!searchOptions)
         searchOptions = {};
 
-    if (!searchOptions.scoreThreshold)
-        searchOptions.scoreThreshold = 1;
+    searchOptions.scoreThreshold || (searchOptions.scoreThreshold = 1);
+    searchOptions.sortOrder || (searchOptions.sortOrder = "desc");
+    searchOptions.indexes || (searchOptions.indexes = []);
 
     if (searchOptions.searchTerm)
-        searchOptions.searchTerm = searchOptions.searchTerm.toLowerCase();
+        searchOptions.searchTerm = searchOptions.searchTerm.toLowerCase().trim();
     
     return searchOptions;
 }
