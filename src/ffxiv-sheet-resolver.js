@@ -43,7 +43,7 @@ export class FFXIVSheetResolver {
      * @param {string} sheetName The name of the sheet to get.
      * @param {SearchOptions} searchOptions
      */
-    async search(sheetName, searchOptions) {
+    async searchSheet(sheetName, searchOptions) {
         searchOptions = validateSearchOptions(searchOptions);
 
         const parsedFilters = searchOptions.filters

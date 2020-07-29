@@ -1,7 +1,7 @@
 {
   "name": "ffxiv-datamining-github-api",
-  "version": "0.1.0",
-  "description": "(WIP) An XIVAPI-like API for \"using the CSVs\" off of GitHub.",
+  "version": "0.2.0",
+  "description": "An XIVAPI-like API for \"using the CSVs\" off of GitHub.",
   "main": "lib/ffxiv-datamining-github-api.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
